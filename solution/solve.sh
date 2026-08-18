@@ -71,6 +71,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: validation.error }, { status: validation.status });
         }
 
+        // Keep the runtime guard explicit so TypeScript can narrow the value before
+        // it is appended to the outbound multipart request.
+        if (!file) {
+            return NextResponse.json({ error: "No file provided" }, { status: 400 });
+        }
+
         const apiKey = process.env.GROQ_API_KEY;
         if (!apiKey) {
             console.error("GROQ_API_KEY is not configured");
