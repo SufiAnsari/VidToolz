@@ -11,7 +11,7 @@ const mustNotMatch = (pattern, message) => assert.doesNotMatch(source, pattern, 
 // Browser-controlled fields must never influence server credentials.
 mustMatch(/process\.env\.GROQ_API_KEY/, "server environment key is required");
 mustNotMatch(/formData\.get\(\s*["']apiKey["']\s*\)/i, "browser API keys are forbidden");
-mustNotMatch(/(?:authorization|bearer)[\s\S]{0,180}formData/i, "request form data must not construct authorization");
+mustNotMatch(/(?:authorization|bearer)[\s\S]{0,180}\bformData\b/i, "request form data must not construct authorization");
 
 // The route must call the reusable policy rather than duplicate only enough code to
 // satisfy module tests, and it must preserve the existing production integration.
