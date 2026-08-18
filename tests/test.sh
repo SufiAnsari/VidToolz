@@ -19,7 +19,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 ./node_modules/.bin/tsc \
   --target ES2022 --module commonjs --moduleResolution node --esModuleInterop \
   --skipLibCheck --outDir "$tmp_dir" "$helper"
-node tests/verify-transcription.mjs "$tmp_dir/lib/transcription.js"
+node tests/verify-transcription.mjs "$tmp_dir/transcription.js"
 
 # Check the route's integration responsibilities that cannot be reached without a
 # real provider. The checker deliberately verifies data flow, not exact formatting.
