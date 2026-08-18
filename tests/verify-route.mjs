@@ -20,7 +20,8 @@ mustMatch(/clientSafeUpstreamError\s*\(/, "upstream errors must be normalized");
 mustMatch(/https:\/\/api\.groq\.com\/openai\/v1\/audio\/transcriptions/, "Groq transcription endpoint is required");
 mustMatch(/whisper-large-v3-turbo/, "existing Whisper model must be retained");
 mustMatch(/new\s+AbortController\s*\(/, "abort controller is required");
-mustMatch(/setTimeout\s*\([\s\S]{0,100}(?:30_000|30000)/, "30 second timeout is required");
+mustMatch(/(?:const|let)\s+\w*timeout\w*\s*=\s*(?:30_000|30000)/i, "30 second timeout is required");
+mustMatch(/setTimeout\s*\(/, "timeout must schedule cancellation");
 mustMatch(/clearTimeout\s*\(/, "timeout must be cleared");
 mustMatch(/signal\s*:/, "fetch must receive the abort signal");
 
