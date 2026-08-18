@@ -3,32 +3,27 @@ set -euo pipefail
 
 route="app/api/transcribe/route.ts"
 helper="lib/transcription.ts"
+route_check="tests/verify-route.mjs"
 
 fail() { echo "FAIL: $1" >&2; exit 1; }
 
 [ -f "$route" ] || fail "transcription route is missing"
 [ -f "$helper" ] || fail "reusable transcription helper is missing"
+[ -f "$route_check" ] || fail "route verifier is missing"
+[ -f "tests/verify-transcription.mjs" ] || fail "policy verifier is missing"
 
-# Security: credentials must come from the server environment, not the request.
-grep -Eq 'process\.env\.GROQ_API_KEY' "$route" || fail "route does not use GROQ_API_KEY"
-! grep -Eq 'formData\.get\(["'"']apiKey["'"']\)' "$route" || fail "route still accepts apiKey from the browser"
-! grep -Eq 'Authorization.*formData' "$route" || fail "request data is used to construct authorization"
+# Compile the deterministic module and exercise behavior with boundary and randomized
+# inputs. This checks policy rather than rewarding a particular implementation layout.
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "$tmp_dir"' EXIT
+./node_modules/.bin/tsc \
+  --target ES2022 --module commonjs --moduleResolution node --esModuleInterop \
+  --skipLibCheck --outDir "$tmp_dir" "$helper"
+node tests/verify-transcription.mjs "$tmp_dir/lib/transcription.js"
 
-# Validation and stable status handling.
-grep -Eq 'validateTranscriptionFile' "$route" || fail "route does not delegate deterministic validation"
-grep -Eq '415' "$helper" || fail "unsupported media types are not rejected"
-grep -Eq '25 \* 1024 \* 1024' "$helper" || fail "25 MiB limit is missing"
-grep -Eq 'file\.size <= 0' "$helper" || fail "empty files are not rejected"
-
-# Reliability: bounded upstream request and safe error mapping.
-grep -Eq 'AbortController' "$route" || fail "upstream timeout is missing"
-grep -Eq '30_000' "$route" || fail "30 second timeout is missing"
-grep -Eq 'clientSafeUpstreamError' "$route" || fail "upstream errors are not normalized"
-grep -Eq 'response\.json\(\)' "$route" || fail "success response is not parsed"
-
-# The route must return the UI contract and must not expose upstream bodies.
-grep -Eq 'NextResponse\.json\(\{ text \}\)' "$route" || fail "success contract is not preserved"
-! grep -Eq 'errorData\.error|errorData\.message|await response\.text\(\)' "$route" || fail "upstream error details may leak to clients"
+# Check the route's integration responsibilities that cannot be reached without a
+# real provider. The checker deliberately verifies data flow, not exact formatting.
+node "$route_check" "$route"
 
 # Independent build check catches broken TypeScript/imports.
 npm run build >/tmp/odyssey-build.log 2>&1 || { cat /tmp/odyssey-build.log; fail "Next.js production build failed"; }

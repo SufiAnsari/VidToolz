@@ -48,7 +48,7 @@ Node.js 20, Next.js 14, React 18, TypeScript 5, and the dependencies pinned by t
 
 ## Verification strategy
 
-`tests/test.sh` performs multiple independent checks: server-side credential sourcing, rejection of browser API-key input, reusable validation logic, empty/oversized/unsupported-file handling, timeout enforcement, upstream error normalization, response-contract preservation, upstream-error non-leakage, and a full Next.js production build. The decisive checks are kept in the canonical verifier entrypoint; a public-facing task description tells the agent what behaviors are required without exposing provider credentials or test data.
+`tests/test.sh` compiles the deterministic helper and runs behavior-level checks across missing, empty, boundary-sized, oversized, supported, unsupported, and randomized valid files. It independently checks upstream-status normalization, then validates route-level secret isolation, timeout/cancellation wiring, safe upstream parsing, model/endpoint preservation, and the `{ text }` success contract. A full Next.js production build is the final integration check. The verifier does not contact Groq or rely on fixed transcription outputs.
 
 ## Binary success condition
 
@@ -60,9 +60,13 @@ Suggested scoring: 20% credential isolation, 20% input validation, 20% timeout/e
 
 ## Anticipated exploits
 
-- Hard-code a response for the verifier: defeated because the verifier checks implementation properties and a real production build.
-- Continue accepting `apiKey` from form data: explicitly rejected.
+- Hard-code a response for the verifier: defeated because the helper is exercised with randomized valid sizes plus boundary cases, and the route must retain the real endpoint/model/data flow.
+- Continue accepting `apiKey` from form data: explicitly rejected, including any use of form data to construct authorization.
 - Return provider error bodies verbatim: explicitly rejected.
-- Only add string literals without integrating them: route/helper relationship and build checks catch this.
+- Only add a disconnected helper: route-to-helper integration is checked and the production build must succeed.
 - Remove the API call entirely to avoid failure handling: the verifier requires the existing Groq endpoint, model, and `{ text }` contract.
 - Add a third-party validation dependency: unnecessary and contrary to the task; the reference uses platform primitives and existing dependencies only.
+
+## Difficulty check
+
+The task is deliberately a multi-constraint integration change, not a one-line input validation patch. A viable implementation must correctly combine the Next.js request boundary, multipart `FormData`, server-only credential ownership, byte/MIME policy, cancellation semantics, upstream status classification, malformed JSON/payload handling, and a frontend-compatible response shape. The verifier rejects common partial implementations such as validation without route integration, an abort controller without a wired signal or cleanup, raw provider-error reflection, or a helper that only handles fixed example inputs. The reference solution is compact enough to be realistically achievable, but the number of interacting failure modes and the source/build/behavior checks support the 2.5-hour expert estimate.
